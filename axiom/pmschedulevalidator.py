@@ -9,6 +9,7 @@ import pytz
 import xlsxwriter
 
 from argh import arg
+from argh.exceptions import CommandError
 from tqdm import tqdm
 from xlsxwriter.utility import xl_rowcol_to_cell
 
@@ -59,6 +60,12 @@ def schedulevalidator(
     logging.debug("Using database connection: " + str(db))
     connection = db.get_connection()
 
+    # Get ALL PM Schedules
+    pms = execute(SQL_GET_PMSCHEDS, connection)
+
+    if len(pms) <= 0:
+        raise CommandError("No PM Schedules found in {}".format(db))
+
     workbook = xlsxwriter.Workbook(outputfile)
     index_worksheet = workbook.add_worksheet(name="Index")
 
@@ -66,9 +73,6 @@ def schedulevalidator(
     xlFormats['good'] = workbook.add_format({'bg_color': '#C6EFCE', 'font_color': '#006100'})
     xlFormats['header'] = workbook.add_format({'bold': True, 'text_wrap': True})
     xlFormats['rrule'] = workbook.add_format({'text_wrap': True, 'valign': 'top'})
-
-    # Get ALL PM Schedules
-    pms = execute(SQL_GET_PMSCHEDS, connection)
 
     # Validate each one
     for pm in tqdm(pms):
