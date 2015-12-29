@@ -16,7 +16,7 @@ from xlsxwriter.utility import xl_rowcol_to_cell
 
 from .ora_helper import execute, parse_db_url
 from .pmeventparser import get_events, parse_event, restrict_to_working_calendar, localize_date, rrule_str
-from .queries import SQL_GET_PMSCHEDS, SQL_GET_TASKS
+from .queries import SQL_GET_PMSCHEDS, SQL_GET_PMSCHEDS_FILTERED, SQL_GET_TASKS
 
 xlFormats = dict()
 
@@ -63,8 +63,15 @@ def schedulevalidator(
     logging.debug("Using database connection: " + str(db))
     connection = db.get_connection()
 
+    pm_id_q = ["'{}'".format(i) for i in pm_id]
+
+    print(pm_id_q)
+
     # Get ALL PM Schedules
-    pms = execute(SQL_GET_PMSCHEDS, connection)
+    if pm_id:
+        pms = execute(SQL_GET_PMSCHEDS_FILTERED.format(','.join(pm_id_q)), connection)
+    else:
+        pms = execute(SQL_GET_PMSCHEDS, connection)
 
 
     if len(pms) <= 0:
