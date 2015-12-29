@@ -10,11 +10,12 @@ import xlsxwriter
 
 from argh import arg
 from argh.exceptions import CommandError
+from datetime import datetime
 from tqdm import tqdm
 from xlsxwriter.utility import xl_rowcol_to_cell
 
 from .ora_helper import execute, parse_db_url
-from .pmeventparser import get_events, parse_event, restrict_to_working_calendar, localize_date
+from .pmeventparser import get_events, parse_event, restrict_to_working_calendar, localize_date, rrule_str
 from .queries import SQL_GET_PMSCHEDS, SQL_GET_TASKS
 
 xlFormats = dict()
@@ -28,6 +29,7 @@ def safe_xl_ws_name(value):
         value = value[0:31]
     return value
 
+@arg('pm_id', nargs='*', help="One or more PM Schedule IDs. Leave blank to show all PM Schedules.", default=None)
 @arg('-d', '--db-url', help="Database connection string. USERNAME/PASSWORD@HOST:PORT:SID or USERNAME/PASSWORD@HOST:PORT/SERVICE_NAME", default="tridata/tridata@localhost:1521:xe")
 @arg('-z', '--timezone', help="The local timezone", default="US/Eastern")
 @arg('-u', '--site-url', help="The URL to TRIRIGA. It will be used to generate links to records.", default="http://localhost:9080")
@@ -36,6 +38,7 @@ def safe_xl_ws_name(value):
 @arg('-w', '--working-calendar', choices=['8to5','24/7'], help="Choose a working calendar", default="8to5")
 @arg('-v', '--verbosity', choices=range(0,3), help="Choose how much output to print to console", default=0)
 def schedulevalidator(
+        pm_id,
         db_url=None,
         timezone=None,
         site_url=None,
@@ -62,6 +65,7 @@ def schedulevalidator(
 
     # Get ALL PM Schedules
     pms = execute(SQL_GET_PMSCHEDS, connection)
+
 
     if len(pms) <= 0:
         raise CommandError("No PM Schedules found in {}".format(db))
@@ -181,7 +185,7 @@ def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False
 
     worksheet.merge_range(0, 0, 0, 3, "{}: {}".format(pm_id, pm_name), xlFormats['header'])
     worksheet.merge_range(1, 0, 1, 3, description, xlFormats['rrule'])
-    worksheet.merge_range(2, 0, 2, 3, str(rrule), xlFormats['rrule'])
+    worksheet.merge_range(2, 0, 2, 3, rrule_str(rrule), xlFormats['rrule'])
 
     worksheet.write_url(0, 5,
                         url="internal:Index!A1",
@@ -191,8 +195,8 @@ def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False
     worksheet.set_row(2, 30)
 
     rrule_itr = iter(rrule)
-    for i, item in enumerate(tasks, start=4):
-        expected_date = next(rrule_itr)
+    for i, item in enumerate(tasks, start=5):
+        expected_date = next(rrule_itr, datetime.fromtimestamp(0))
 
         item['TRIPLANNEDSTARTDT'] =  localize_date(item['TRIPLANNEDSTARTDT'], local_tz)
 
@@ -230,7 +234,7 @@ def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False
         worksheet.write(i, 3, str(expected_date))
         worksheet.write(i, 4, formula)
 
-    worksheet.conditional_format(4, 4, i, 4, {'type': 'text',
+    worksheet.conditional_format(5, 4, i, 4, {'type': 'text',
                                               'criteria': "containing",
                                               'value': "ERROR",
                                               'format': xlFormats['bad']})

@@ -228,7 +228,12 @@ def parse_event(event, default_count=5000):
 
     # 3. Schedule
     if occurrence_type == 'Single Occurrence':
-        return [dtstart]
+        description = "Single occurrence on " + str(dtstart)
+        ruleset = rruleset()
+        ruleset.rdate(dtstart)
+        # Return here because we don't need to check the rest of the values
+        # They may be undefined
+        return (ruleset, description)
 
     elif occurrence_type == 'DAILY':
         freq = DAILY
