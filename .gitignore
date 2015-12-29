@@ -55,7 +55,7 @@ target/
 
 *.msi
 *.wixpdb
-axiom.xlsx
+*axiom.xlsx
 
 README.docx
 ChangeLog.docx
