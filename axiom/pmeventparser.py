@@ -6,6 +6,7 @@ Converts a PM event record to a CRON expression
 
 import logging
 import pytz
+import pprint
 
 from argh import arg
 from datetime import timedelta
@@ -29,6 +30,21 @@ month_map = {
     'December'  : 12
 }
 
+month_map_rev = {
+  1  : 'January',
+  2  : 'February',
+  3  : 'March',
+  4  : 'April',
+  5  : 'May',
+  6  : 'June',
+  7  : 'July',
+  8  : 'August',
+  9  : 'September',
+  10 : 'October',
+  11 : 'November',
+  12 : 'December',
+}
+
 weekday_map = {
     'Sunday'    : SU,
     'Monday'    : MO,
@@ -49,14 +65,14 @@ weekofmonth_map = {
 
 @arg('pm_id', nargs='?', help="PM Schedule ID. Leave blank to show all PM Schedules.", default=None)
 @arg('-d', '--db-url', help="Database TNS connection string.", default="tridata/tridata@localhost:1521:xe")
-@arg('-t', '--default_count', help="The default number of events to generate for schedules with no end date", default="50")
+@arg('-t', '--count', help="The default number of events to generate for schedules with no end date", default="50")
 @arg('-z', '--timezone', help="The local timezone", default="US/Eastern")
 @arg('-w', '--working-calendar', choices=['8to5','24/7'], help="Choose a working calendar", default="8to5")
 @arg('-v', '--verbosity', choices=range(0,3), help="Choose how much output to print to console", default=0)
 def eventparser(
         pm_id,
         db_url=None,
-        default_count=None,
+        count=None,
         timezone=None,
         working_calendar=None,
         verbosity=None
@@ -69,22 +85,25 @@ def eventparser(
     logging.debug("Using database connection: " + str(db))
     connection = db.get_connection()
 
+    local_tz = pytz.timezone(timezone)
     events = get_events(connection, pm_id)
 
     for event in events:
         print("{}: {}".format(event["PM_ID"], event["PM_NAME"]))
-        rrule, description = parse_event(event, timezone=timezone, default_count=default_count)
+        rrule, description = parse_event(event, timezone=timezone, default_count=count)
         print(description)
         print()
         print(str(rrule))
         print()
 
-        for r in rrule:
-            coerced = restrict_to_working_calendar(r, working_calendar=working_calendar)
-            if r != coerced:
-                print(r, " => ", coerced)
+        for occurance in rrule:
+            coerced = restrict_to_working_calendar(occurance, working_calendar=working_calendar)
+            occurance = local_tz.localize(occurance)
+            if occurance != coerced:
+                coerced = local_tz.localize(coerced)
+                print(occurance, " => ", coerced)
             else:
-                print(r)
+                print(occurance)
 
         print()
 
@@ -139,16 +158,25 @@ def restrict_to_standard_calendar(expected_date, start_hour=8, end_hour=17):
 
     return expected_date
 
+
+def localize_date(naiveutcdate, timezone):
+    """
+    Localize a naive UTC date.
+    """
+    utcdate = pytz.utc.localize(naiveutcdate)
+    localdate = timezone.normalize(utcdate.astimezone(timezone))
+    return localdate
+
 def parse_event(event, timezone="US/Eastern", default_count=5000):
 
     # The times from database are always naive, without a timezone.
     # Tell python it's UTC, then convert to local TZ.
     local_tz = pytz.timezone(timezone)
-    event['EVENTSTARTDATE'] = pytz.utc.localize(event['EVENTSTARTDATE'])
-    event['EVENTSTARTDATE'] = local_tz.normalize(event['EVENTSTARTDATE'].astimezone(local_tz))
 
-    event['EVENTENDDATE'] = pytz.utc.localize(event['EVENTENDDATE'])
-    event['EVENTENDDATE'] = local_tz.normalize(event['EVENTENDDATE'].astimezone(local_tz))
+    event['EVENTSTARTDATE'] = localize_date(event['EVENTSTARTDATE'], local_tz)
+    event['EVENTENDDATE'] = localize_date(event['EVENTENDDATE'], local_tz)
+
+    logging.debug(pprint.pformat(event))
 
     freq=None
     dtstart=None
@@ -169,6 +197,8 @@ def parse_event(event, timezone="US/Eastern", default_count=5000):
     cache=False
 
     description = None
+
+    skip_months = []
 
     # 1. Start Date
     dtstart = event['EVENTSTARTDATE'].replace(tzinfo=None)
@@ -222,16 +252,41 @@ def parse_event(event, timezone="US/Eastern", default_count=5000):
 
         monthly_recurrence = event['TRIRECURRENCEMONTHLY']
 
+        if event['TRIJANUARYBL'] == 'TRUE':
+            skip_months.append(1)
+        if event['TRIFEBRUARYBL'] == 'TRUE':
+            skip_months.append(2)
+        if event['TRIMARCHBL'] == 'TRUE':
+            skip_months.append(3)
+        if event['TRIAPRILBL'] == 'TRUE':
+            skip_months.append(4)
+        if event['TRIMAYBL'] == 'TRUE':
+            skip_months.append(5)
+        if event['TRIJUNEBL'] == 'TRUE':
+            skip_months.append(6)
+        if event['TRIJULYBL'] == 'TRUE':
+            skip_months.append(7)
+        if event['TRIAUGUSTBL'] == 'TRUE':
+            skip_months.append(8)
+        if event['TRISEPTEMBERBL'] == 'TRUE':
+            skip_months.append(9)
+        if event['TRIOCTOBERBL'] == 'TRUE':
+            skip_months.append(10)
+        if event['TRINOVEMBERBL'] == 'TRUE':
+            skip_months.append(11)
+        if event['TRIDECEMBERBL'] == 'TRUE':
+            skip_months.append(12)
+
         # TODO: Months to Skip
         if monthly_recurrence == 'Day [x] of every [x] month(s)':
             bymonthday  = int(event['MONTHLYDAYOFMONTH'])
             interval = int(event['MONTHLYRECURRENCEMON'])
-            description = "MONTHLY: Day {} of every {} month(s). Skip: ?".format(bymonthday, interval)
+            description = "MONTHLY: Day {} of every {} month(s). Skip: {}".format(bymonthday, interval, list(map(month_map_rev.get, skip_months)))
         elif monthly_recurrence == 'The [First] [Monday] of every [x] month(s)':
             interval = int(event['MONTHLYRECURRENCEMON'])
             byweekday = weekday_map[event['MONTHLYDAYOFWEEK']]
             bysetpos = weekofmonth_map[event['MONTHLYWEEKOFMONTH']]
-            description = "MONTHLY: The {} {} of every {} month(s). Skip: ?".format(event['MONTHLYWEEKOFMONTH'], event['MONTHLYDAYOFWEEK'], interval)
+            description = "MONTHLY: The {} {} of every {} month(s). Skip: {}".format(event['MONTHLYWEEKOFMONTH'], event['MONTHLYDAYOFWEEK'], interval, list(map(month_map_rev.get, skip_months)))
 
     elif occurrence_type == 'YEARLY':
         freq = YEARLY
@@ -263,4 +318,19 @@ def parse_event(event, timezone="US/Eastern", default_count=5000):
                    bymonthday, byyearday, byeaster, byweekno, byweekday, byhour,
                    byminute, bysecond, cache)
 
-    return (result, description)
+
+    ruleset = rruleset()
+    ruleset.rrule(result)
+
+    logging.debug(result)
+
+    if len(skip_months) > 0:
+        # Skip all days in the SKIP months. The time has to match the include
+        # rule times.
+        skip_months_rule = rrule(DAILY, dtstart=dtstart, bymonth=skip_months)
+        ruleset.exrule(skip_months_rule)
+        logging.debug(skip_months_rule)
+
+        #return (skip_months_rule, description)
+
+    return (ruleset, description)

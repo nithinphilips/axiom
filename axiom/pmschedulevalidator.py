@@ -14,7 +14,7 @@ from tqdm import tqdm
 from xlsxwriter.utility import xl_rowcol_to_cell
 
 from .ora_helper import execute, parse_db_url
-from .pmeventparser import get_events, parse_event, restrict_to_working_calendar
+from .pmeventparser import get_events, parse_event, restrict_to_working_calendar, localize_date
 from .queries import SQL_GET_PMSCHEDS, SQL_GET_TASKS
 
 xlFormats = dict()
@@ -193,14 +193,18 @@ def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False
     rrule_itr = iter(rrule)
     for i, item in enumerate(tasks, start=4):
         expected_date = next(rrule_itr)
-        expected_date = local_tz.localize(expected_date)
 
-        item['TRIPLANNEDSTARTDT'] = pytz.utc.localize(item['TRIPLANNEDSTARTDT'])
-        item['TRIPLANNEDSTARTDT'] = local_tz.normalize(item['TRIPLANNEDSTARTDT'].astimezone(local_tz))
+        item['TRIPLANNEDSTARTDT'] =  localize_date(item['TRIPLANNEDSTARTDT'], local_tz)
 
         actual_date = item['TRIPLANNEDSTARTDT']
 
         coerced_date = restrict_to_working_calendar(expected_date, working_calendar)
+
+        # The order of execution is important.
+        # ``restrict_to_working_calendar`` method may change the date to fall
+        # IN or OUT of DST period. This will change the TZ offset.
+        expected_date = local_tz.localize(expected_date)
+        coerced_date = local_tz.localize(coerced_date)
 
         if expected_date != coerced_date:
             logging.debug("Coerce date: {} => {}".format(expected_date, coerced_date))
