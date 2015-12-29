@@ -22,7 +22,7 @@ dist: dist/$(PRODUCT_NAME)-$(VERSION).zip installer
 
 dist/$(PRODUCT_NAME).exe: $(PRODUCT_NAME)-runner.py $(SOURCES) ChangeLog.docx README.docx
 	$(PYINSTALLER) --noconfirm --onefile --name=$(PRODUCT_NAME) $<
-	cp $(SOURCEDIR)/data/*.* dist/
+	-cp $(SOURCEDIR)/data/*.* dist/
 	cp ChangeLog.docx dist/
 	cp README.docx dist/
 	cp COPYING dist/
