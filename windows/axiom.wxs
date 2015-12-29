@@ -1,0 +1,136 @@
+<?xml version='1.0' encoding='windows-1252'?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+    <?define UpgradeCode = "57b56411-179f-4eff-87a5-dd4972d93654" ?>
+
+    <Product Name='Axiom $(var.VERSION)' 
+        Id='$(var.PRODUCTGUID)'
+        UpgradeCode='$(var.UpgradeCode)'
+        Language='1033' Codepage='1252' 
+        Version='$(var.VERSION)' Manufacturer='Axiom'>
+
+        <Package Id='*' Keywords='Installer'
+            InstallScope="perMachine"
+            Description="Axiom $(var.VERSION) Installer"
+            Comments='Windows Install Package' Manufacturer='Axiom'
+            InstallerVersion='100' Languages='1033' Compressed='yes' SummaryCodepage='1252' />
+
+        <Upgrade Id="$(var.UpgradeCode)">
+            <UpgradeVersion Minimum="0.0.1"
+                            IncludeMinimum="yes"
+                            OnlyDetect="no"
+                            Maximum="$(var.VERSION)"
+                            IncludeMaximum="no"
+                            Property="PREVIOUSFOUND" />
+        </Upgrade>
+
+        <Media Id='1' Cabinet='Sample.cab' EmbedCab='yes' DiskPrompt="CD-ROM #1" />
+        <Property Id='DiskPrompt' Value="Acme's Foobar 1.0 Installation [1]" />
+
+        <Property Id="DISABLEADVTSHORTCUTS" Value="1" />
+
+        <CustomAction Id="SetPerUserFolder" Property="APPLICATIONFOLDER" Value="[LocalAppDataFolder]Axiom" Execute="immediate" />
+        <CustomAction Id="SetPerMachineFolder" Property="APPLICATIONFOLDER" Value="[ProgramFilesFolder]Axiom" Execute="immediate" />
+        <CustomAction Id='PreventDowngrading' Error='Newer version already installed' />
+
+        <InstallExecuteSequence>
+            <Custom Action='PreventDowngrading' After='FindRelatedProducts'>NEWPRODUCTFOUND</Custom>
+            <RemoveExistingProducts After="InstallInitialize"/>
+            <Custom Action="SetPerUserFolder" Before="CostFinalize">ACTION="INSTALL" AND APPLICATIONFOLDER="" AND (ALLUSERS="" OR (ALLUSERS=2 AND (NOT Privileged)))</Custom>
+            <Custom Action="SetPerMachineFolder" After="SetPerUserFolder">ACTION="INSTALL" AND APPLICATIONFOLDER="" AND (ALLUSERS=1 OR (ALLUSERS=2 AND Privileged))</Custom>
+        </InstallExecuteSequence>
+        <InstallUISequence>
+            <Custom Action='PreventDowngrading' After='FindRelatedProducts'>NEWPRODUCTFOUND</Custom>
+            <Custom Action="SetPerUserFolder" Before="CostFinalize">ACTION="INSTALL" AND APPLICATIONFOLDER="" AND (ALLUSERS="" OR (ALLUSERS=2 AND (NOT Privileged)))</Custom>
+            <Custom Action="SetPerMachineFolder" After="SetPerUserFolder">ACTION="INSTALL" AND APPLICATIONFOLDER="" AND (ALLUSERS=1 OR (ALLUSERS=2 AND Privileged))</Custom>
+        </InstallUISequence>
+
+
+
+        <Directory Id='TARGETDIR' Name='SourceDir'>
+            <Directory Id='ProgramFilesFolder' Name='PFiles'>
+                <Directory Id='APPLICATIONFOLDER' Name='Axiom'>
+
+                    <Component Id='MainExecutable' Guid='*'>
+                        <File Id='axiom.exe' Name='axiom.exe' DiskId='1' Source='../dist/axiom.exe' KeyPath='yes' />
+                    </Component>
+
+                    <Component Id='SqlLibs' Guid='027a9c70-391f-4f0e-a343-917a4da1cfff'>
+                        <File Id='adrci.exe' Name='adrci.exe' DiskId='1' Source='../software/instantclient_11_2/adrci.exe' />
+                        <File Id='adrci.sym' Name='adrci.sym' DiskId='1' Source='../software/instantclient_11_2/adrci.sym' />
+                        <File Id='BASIC_README' Name='BASIC_README' DiskId='1' Source='../software/instantclient_11_2/BASIC_README' />
+                        <File Id='genezi.exe' Name='genezi.exe' DiskId='1' Source='../software/instantclient_11_2/genezi.exe' />
+                        <File Id='genezi.sym' Name='genezi.sym' DiskId='1' Source='../software/instantclient_11_2/genezi.sym' />
+                        <File Id='oci.sym' Name='oci.sym' DiskId='1' Source='../software/instantclient_11_2/oci.sym' />
+                        <File Id='ocijdbc11.dll' Name='ocijdbc11.dll' DiskId='1' Source='../software/instantclient_11_2/ocijdbc11.dll' />
+                        <File Id='ocijdbc11.sym' Name='ocijdbc11.sym' DiskId='1' Source='../software/instantclient_11_2/ocijdbc11.sym' />
+                        <File Id='ociw32.dll' Name='ociw32.dll' DiskId='1' Source='../software/instantclient_11_2/ociw32.dll' />
+                        <File Id='ociw32.sym' Name='ociw32.sym' DiskId='1' Source='../software/instantclient_11_2/ociw32.sym' />
+                        <File Id='ojdbc5.jar' Name='ojdbc5.jar' DiskId='1' Source='../software/instantclient_11_2/ojdbc5.jar' />
+                        <File Id='ojdbc6.jar' Name='ojdbc6.jar' DiskId='1' Source='../software/instantclient_11_2/ojdbc6.jar' />
+                        <File Id='orannzsbb11.dll' Name='orannzsbb11.dll' DiskId='1' Source='../software/instantclient_11_2/orannzsbb11.dll' />
+                        <File Id='orannzsbb11.sym' Name='orannzsbb11.sym' DiskId='1' Source='../software/instantclient_11_2/orannzsbb11.sym' />
+                        <File Id='oraocci11.dll' Name='oraocci11.dll' DiskId='1' Source='../software/instantclient_11_2/oraocci11.dll' />
+                        <File Id='oraocci11.sym' Name='oraocci11.sym' DiskId='1' Source='../software/instantclient_11_2/oraocci11.sym' />
+                        <File Id='oraociei11.dll' Name='oraociei11.dll' DiskId='1' Source='../software/instantclient_11_2/oraociei11.dll' />
+                        <File Id='oraociei11.sym' Name='oraociei11.sym' DiskId='1' Source='../software/instantclient_11_2/oraociei11.sym' />
+                        <File Id='orasql11.dll' Name='orasql11.dll' DiskId='1' Source='../software/instantclient_11_2/orasql11.dll' />
+                        <File Id='orasql11.sym' Name='orasql11.sym' DiskId='1' Source='../software/instantclient_11_2/orasql11.sym' />
+                        <File Id='uidrvci.exe' Name='uidrvci.exe' DiskId='1' Source='../software/instantclient_11_2/uidrvci.exe' />
+                        <File Id='uidrvci.sym' Name='uidrvci.sym' DiskId='1' Source='../software/instantclient_11_2/uidrvci.sym' />
+                        <File Id='vc8_oraocci11.dll' Name='vc8_oraocci11.dll' DiskId='1' Source='../software/instantclient_11_2/vc8/oraocci11.dll' />
+                        <File Id='vc8_oraocci11.sym' Name='vc8_oraocci11.sym' DiskId='1' Source='../software/instantclient_11_2/vc8/oraocci11.sym' />
+                        <File Id='vc9_oraocci11.dll' Name='vc9_oraocci11.dll' DiskId='1' Source='../software/instantclient_11_2/vc9/oraocci11.dll' />
+                        <File Id='vc9_oraocci11.sym' Name='vc9_oraocci11.sym' DiskId='1' Source='../software/instantclient_11_2/vc9/oraocci11.sym' />
+                    </Component>
+
+                    <Component Id="UpdatePathUser"
+                        Guid="4d286f58-57a4-439d-9f39-f37eddc44b83">
+                        <Condition><![CDATA[ ALLUSERS="" OR (ALLUSERS=2 AND (NOT Privileged)) ]]></Condition>
+                        <Environment Id="UpdatePathUser" Name="PATH" Action="set"
+                        Part="last" Value="[APPLICATIONFOLDER]" System="no" />
+                        <RegistryValue Root="HKCU" Key="Software\Axiom"
+                        Name="UserPathUpdated" Type="integer" Value="1" KeyPath="yes"/>
+                    </Component>
+
+                    <Component Id="UpdatePathMachine"
+                        Guid="6381cf47-d556-45a6-9a72-8637bfedea7c">
+                        <Condition><![CDATA[ ALLUSERS=1 OR (ALLUSERS=2 AND Privileged) ]]></Condition>
+                        <Environment Id="UpdatePathMachine" Name="PATH" Action="set"
+                        Part="last" Value="[APPLICATIONFOLDER]" System="yes" />
+                        <RegistryValue Root="HKLM" Key="Software\Axiom"
+                        Name="SystemPathUpdated" Type="integer" Value="1" KeyPath="yes"/>
+                    </Component>
+                </Directory>
+            </Directory>
+
+            <!-- <Directory Id="ProgramMenuFolder" Name="Programs">
+                <Directory Id="ProgramMenuDir" Name="Foobar 1.0">
+                    <Component Id="ProgramMenuDir" Guid="c3d897d2-8f47-4fa1-9c2c-c2893f292afe">
+                        <RemoveFolder Id='ProgramMenuDir' On='uninstall' />
+                        <RegistryValue Root='HKCU' Key='Software\[Manufacturer]\[ProductName]' Type='string' Value='' KeyPath='yes' />
+                    </Component>
+                </Directory>
+            </Directory> -->
+
+            <Directory Id="DesktopFolder" Name="Desktop" />
+        </Directory>
+
+        <Feature Id='Complete' Title='Foobar 1.0' Description='The complete package.'
+            Display='expand' Level='1' ConfigurableDirectory='APPLICATIONFOLDER'>
+            <Feature Id='MainProgram' Title='Program' Description='The main executable.' Level='1'>
+                <ComponentRef Id='MainExecutable' />
+                <ComponentRef Id='SqlLibs'/>
+                <ComponentRef Id="UpdatePathUser" />
+                <ComponentRef Id="UpdatePathMachine" />
+            </Feature>
+        </Feature>
+
+        <Property Id="WIXUI_INSTALLDIR" Value="APPLICATIONFOLDER" />
+        <UIRef Id="WixUI_InstallDir" />
+        <UIRef Id="WixUI_ErrorProgressText" />
+        <WixVariable Id="WixUILicenseRtf" Value="..\COPYING.rtf" />
+
+        <!-- <Icon Id="Icon" SourceFile="../dist/axiom/axiom.exe" /> -->
+
+    </Product>
+</Wix>

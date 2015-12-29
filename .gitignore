@@ -52,3 +52,10 @@ docs/_build/
 
 # PyBuilder
 target/
+
+*.msi
+*.wixpdb
+axiom.xlsx
+
+README.docx
+ChangeLog.docx
