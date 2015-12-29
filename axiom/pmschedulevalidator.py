@@ -148,7 +148,7 @@ def populate_index_worksheet(worksheet, pms, site_url):
 
 def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False, working_calendar="8to5", verbosity=1):
 
-    event = get_events(connection, pm_id=pm_id)
+    event = get_events(connection, pm_id=pm_id, timezone=timezone)
 
     if len(event) <= 0:
         raise Exception("No recurrence pattern found for PM: {} {}.".format(pm_id, pm_name))
@@ -157,7 +157,7 @@ def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False
 
     event = event[0]
 
-    rrule, description = parse_event(event, timezone=timezone)
+    rrule, description = parse_event(event)
 
     if verbosity >= 1:
         print(pm_id + ": " + pm_name)
@@ -199,7 +199,6 @@ def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False
         actual_date = item['TRIPLANNEDSTARTDT']
 
         coerced_date = restrict_to_working_calendar(expected_date, working_calendar)
-
         # The order of execution is important.
         # ``restrict_to_working_calendar`` method may change the date to fall
         # IN or OUT of DST period. This will change the TZ offset.

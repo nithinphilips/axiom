@@ -20,8 +20,10 @@ def execute(sql_statement, connection, parameters=None):
     """
 
     cursor = connection.cursor()
+    logging.debug("Execute SQL: " + sql_statement)
     if parameters:
         cursor = cursor.execute(sql_statement, parameters)
+        logging.debug("Parameters: " + str(parameters))
     else:
         cursor = cursor.execute(sql_statement)
 

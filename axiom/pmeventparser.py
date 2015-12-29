@@ -13,7 +13,7 @@ from datetime import timedelta
 from dateutil.rrule import *
 
 from .ora_helper import execute, parse_db_url
-from .queries import SQL_GET_EVENT, SQL_GET_EVENTS
+from .queries import SQL_GET_EVENT, SQL_GET_EVENTS, SQL_GET_INCLUDES, SQL_GET_EXCLUDES
 
 month_map = {
     'January'   : 1,
@@ -86,32 +86,57 @@ def eventparser(
     connection = db.get_connection()
 
     local_tz = pytz.timezone(timezone)
-    events = get_events(connection, pm_id)
+    events = get_events(connection, pm_id, timezone=timezone)
 
     for event in events:
         print("{}: {}".format(event["PM_ID"], event["PM_NAME"]))
-        rrule, description = parse_event(event, timezone=timezone, default_count=count)
+        rrule, description = parse_event(event, default_count=count)
         print(description)
         print()
-        print(str(rrule))
+        print(rrule_str(rrule))
         print()
 
         for occurance in rrule:
             coerced = restrict_to_working_calendar(occurance, working_calendar=working_calendar)
+
+            coerced = local_tz.localize(coerced)
             occurance = local_tz.localize(occurance)
+
             if occurance != coerced:
-                coerced = local_tz.localize(coerced)
                 print(occurance, " => ", coerced)
             else:
                 print(occurance)
 
         print()
 
-def get_events(connection, pm_id=None):
+def get_events(connection, pm_id=None, timezone="US/Eastern"):
+
+    # The times from database are always naive, without a timezone.
+    # Tell python it's UTC, then convert to local TZ.
+    local_tz = pytz.timezone(timezone)
+
     if pm_id:
         rows = execute(SQL_GET_EVENT, connection, {'pm_id': pm_id})
     else:
         rows = execute(SQL_GET_EVENTS, connection)
+
+    # Get includes and excludes
+    for event in rows:
+        event['EVENTSTARTDATE'] = localize_date(event['EVENTSTARTDATE'], local_tz)
+        event['EVENTENDDATE'] = localize_date(event['EVENTENDDATE'], local_tz)
+
+        includes = execute(SQL_GET_INCLUDES, connection, {'event_spec_id': event["EVENT_SPEC_ID"]})
+        excludes = execute(SQL_GET_EXCLUDES, connection, {'event_spec_id': event["EVENT_SPEC_ID"]})
+
+        for inc in includes:
+            inc['INC_STARTDT'] = localize_date(inc['INC_STARTDT'], local_tz)
+
+        for excl in excludes:
+            excl['EXCL_STARTDT'] = localize_date(excl['EXCL_STARTDT'], local_tz)
+            excl['EXCL_ENDDT'] = localize_date(excl['EXCL_ENDDT'], local_tz)
+
+        event["_INCLUDES"] = includes
+        event["_EXCLUDES"] = excludes
 
     if not rows:
         raise Exception("PM Schedule '{}' was not found.".format(pm_name))
@@ -136,7 +161,7 @@ def restrict_to_standard_calendar(expected_date, start_hour=8, end_hour=17):
 
     If date is on a weekend, change it to the following Monday.
 
-    If the start hour is before 8 AM, change it to 8:00 AM. 
+    If the start hour is before 8 AM, change it to 8:00 AM.
     The seconds are unaltered to mimic TRIRIGA behavior.
     """
 
@@ -167,14 +192,9 @@ def localize_date(naiveutcdate, timezone):
     localdate = timezone.normalize(utcdate.astimezone(timezone))
     return localdate
 
-def parse_event(event, timezone="US/Eastern", default_count=5000):
-
-    # The times from database are always naive, without a timezone.
-    # Tell python it's UTC, then convert to local TZ.
-    local_tz = pytz.timezone(timezone)
-
-    event['EVENTSTARTDATE'] = localize_date(event['EVENTSTARTDATE'], local_tz)
-    event['EVENTENDDATE'] = localize_date(event['EVENTENDDATE'], local_tz)
+def parse_event(event, default_count=5000):
+    """
+    """
 
     logging.debug(pprint.pformat(event))
 
@@ -304,14 +324,24 @@ def parse_event(event, timezone="US/Eastern", default_count=5000):
             description = "YEARLY: The {} {} of {}".format(event['YEARLYWEEKOFMONTH'], event['YEARLYDAYOFWEEK'], event['YEARLYMONTH'])
 
     elif occurrence_type == 'Ad hoc':
-        raise Exception("Ad hoc expressions are not supported")
+        description = "Ad hoc"
+        ruleset = rruleset()
+        for inc in event['_INCLUDES']:
+            ruleset.rdate(inc['INC_STARTDT'].replace(tzinfo=None))
+
+        # Return here because we don't need to check the rest of the values
+        # They may be undefined
+        return (ruleset, description)
 
     # 4. End Date
-    if event['TRIRECURRENCEENDOPTI'] == 'End After':
+    end_option = event['TRIRECURRENCEENDOPTI']
+    logging.debug("End Option: " + end_option)
+    if end_option == 'End After':
         count = int(event['EVENTDURATION'])
-    elif event['TRIRECURRENCEENDOPTI'] == 'End Date':
+    elif end_option == 'End Date':
         until = event['EVENTENDDATE']
-    else:
+
+    if (count and count <= 0) or not until:
         count = int(default_count)
 
     result = rrule(freq, dtstart, interval, wkst, count, until, bysetpos, bymonth,
@@ -322,15 +352,75 @@ def parse_event(event, timezone="US/Eastern", default_count=5000):
     ruleset = rruleset()
     ruleset.rrule(result)
 
+    # Also Schedule On
+    for inc in event['_INCLUDES']:
+        logging.debug("Also schedule on: " + str(inc['INC_STARTDT']))
+        ruleset.rdate(inc['INC_STARTDT'].replace(tzinfo=None))
+
+    # Exclusion ranges
+    for excl in event['_EXCLUDES']:
+        excl_start = excl['EXCL_STARTDT'].replace(tzinfo=None)
+        excl_end = excl['EXCL_ENDDT'].replace(tzinfo=None)
+
+        # Adjust excl_start time portion to match the main rule time
+        if excl_start.hour >= dtstart.hour:
+            # The exclusion start after the mail rule. Skip to next day
+            excl_start = excl_start + timedelta(hours=24)
+            excl_start = excl_start.replace(hour=dtstart.hour,
+                                            minute=dtstart.minute,
+                                            second=dtstart.second,
+                                            microsecond=dtstart.microsecond)
+        else:
+            excl_start = excl_start.replace(hour=dtstart.hour,
+                                            minute=dtstart.minute,
+                                            second=dtstart.second,
+                                            microsecond=dtstart.microsecond)
+
+        logging.debug("Exclusion start changed from {} to {}".format(excl['EXCL_STARTDT'], excl_start))
+
+        logging.debug("Exclude from {} to {}".format(excl_start, excl_end))
+        exclusion_rule = rrule(DAILY, dtstart=excl_start, until=excl_end)
+        ruleset.exrule(exclusion_rule)
+
+
     logging.debug(result)
 
     if len(skip_months) > 0:
         # Skip all days in the SKIP months. The time has to match the include
         # rule times.
         skip_months_rule = rrule(DAILY, dtstart=dtstart, bymonth=skip_months)
-        ruleset.exrule(skip_months_rule)
         logging.debug(skip_months_rule)
-
-        #return (skip_months_rule, description)
+        ruleset.exrule(skip_months_rule)
 
     return (ruleset, description)
+
+
+def rrule_str(rules):
+    try:
+        from StringIO import StringIO
+    except ImportError:
+        from io import StringIO
+
+    file_str = StringIO()
+
+    if isinstance(rules, rruleset):
+        file_str.write("Include Rules:\n")
+        for arule in rules._rrule:
+            file_str.write(str(arule) + "\n")
+
+        file_str.write("\nInclude Dates:\n")
+        for arule in rules._rdate:
+            file_str.write(str(arule) + "\n")
+
+        file_str.write("\nExclude Rules:\n")
+        for arule in rules._exrule:
+            file_str.write(str(arule) + "\n")
+
+        file_str.write("\nExclude Dates:\n")
+        for arule in rules._exdate:
+            file_str.write(str(arule) + "\n")
+    else:
+        file_str.write(str(rules))
+
+    return file_str.getvalue()
+
