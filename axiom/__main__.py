@@ -4,6 +4,6 @@
 
 """axiom.__main__: executed when axiom directory is called as script."""
 
-from .axiom import main
+from .axiom import schedulevalidator_entry
 
-main()
+schedulevalidator_entry()

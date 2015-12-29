@@ -6,8 +6,8 @@
 """Convenience wrapper for running axiom directly from source tree."""
 
 
-from axiom.axiom import main
+from axiom.axiom import schedulevalidator_entry
 
 
 if __name__ == '__main__':
-    main()
+    schedulevalidator_entry()

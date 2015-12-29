@@ -24,7 +24,7 @@ with open("README.rst", "rb") as f:
 
 
 setup(
-    name = "cmdline-axiom",
+    name = "axiom",
     packages = ["axiom"],
     package_data={'axiom': ['data/*.xml']},
     entry_points = {
