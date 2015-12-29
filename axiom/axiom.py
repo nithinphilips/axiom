@@ -13,7 +13,7 @@ import sys
 
 from argh import ArghParser, completion, arg
 
-from .stuff import Stuff
+from .pmschedulevalidator import schedulevalidator
 
 # These arguments are used by this global dispatcher and each individual
 # stand-alone commands.
@@ -25,11 +25,7 @@ COMMON_PARSER.add_argument('--debug',
 
 def main():
     parser = ArghParser(parents=[COMMON_PARSER])
-    parser.add_commands(
-        [
-            ting
-        ]
-    )
+    parser.set_default_command(schedulevalidator)
     completion.autocomplete(parser)
 
     # Parse ahead
@@ -42,19 +38,3 @@ def main():
 
     parser.dispatch()
 
-# adding help to `foo` which is in the function signature:
-@arg('foo', help='blah')
-# these are not in the signature so they go to **kwargs:
-@arg('baz')
-@arg('-q', '--quux')
-# the function itself:
-def ting(foo, bar=1, *args, **kwargs):
-    logging.info("You turned on --debug")
-    yield foo
-    yield bar
-    yield ', '.join(args)
-    yield kwargs['baz']
-    yield kwargs['quux']
-
-class Boo(Stuff):
-    pass
