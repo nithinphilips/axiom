@@ -94,8 +94,8 @@ If the time differences are causing issues, you can omit the time component by
 specifying the ``--strip-time`` (``-s``) flag. This way only the dates are
 compared.
 
-Limitations
------------
+Known Issues
+------------
 * Axiom does not support *Ad-hoc* schedules.
 * Axiom does not support skipping months in MONTHLY schedules.
 * The starting datetime is not the first recurrence instance, unless it does
@@ -106,6 +106,9 @@ Limitations
   <ftp://ftp.rfc-editor.org/in-notes/rfc2445.txt>`_ and `the implementation
   notes <https://labix.org/python-dateutil>`_ if you have questions about Axiom's
   behavior.
+* Working calendar rules are applied after a date is converted to local
+  time-zone.  In some scenarios this will cause the date to have the wrong
+  timezone offset.
 
 Building Windows Installer
 --------------------------
