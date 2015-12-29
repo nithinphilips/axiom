@@ -28,7 +28,8 @@ setup(
     packages = ["axiom"],
     package_data={'axiom': ['data/*.xml']},
     entry_points = {
-        "console_scripts": ['axiom = axiom.axiom:main']
+        "console_scripts": ['axiom = axiom.axiom:schedulevalidator_entry',
+                            'axiom-parser = axiom.axiom:eventparser_entry']
         },
     install_requires = reqs,
     version = version,

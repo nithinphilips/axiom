@@ -47,15 +47,19 @@ weekofmonth_map = {
     'Last'   : -1
 }
 
-@arg('pm_id', nargs='?', help="PM Schedule ID. Leave blank to show all PM Schedules.")
-@arg('--db-url', help="Database TNS connection string.", default="tridata/tridata@localhost:1521:xe")
-@arg('--default_count', help="The default number of events to generate for schedules with no end date", default="50")
-@arg('--timezone', help="The local timezone", default="US/Eastern")
+@arg('pm_id', nargs='?', help="PM Schedule ID. Leave blank to show all PM Schedules.", default=None)
+@arg('-d', '--db-url', help="Database TNS connection string.", default="tridata/tridata@localhost:1521:xe")
+@arg('-t', '--default_count', help="The default number of events to generate for schedules with no end date", default="50")
+@arg('-z', '--timezone', help="The local timezone", default="US/Eastern")
+@arg('-w', '--working-calendar', choices=['8to5','24/7'], help="Choose a working calendar", default="8to5")
+@arg('-v', '--verbosity', choices=range(0,3), help="Choose how much output to print to console", default=0)
 def eventparser(
-        pm_id=None,
+        pm_id,
         db_url=None,
         default_count=None,
-        timezone=None
+        timezone=None,
+        working_calendar=None,
+        verbosity=None
     ):
     """
     Reads a PM Schedule recurrence rule from TRIRIGA database.
@@ -76,7 +80,7 @@ def eventparser(
         print()
 
         for r in rrule:
-            coerced = restrict_to_working_calendar(r)
+            coerced = restrict_to_working_calendar(r, working_calendar=working_calendar)
             if r != coerced:
                 print(r, " => ", coerced)
             else:
