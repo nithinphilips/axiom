@@ -172,7 +172,7 @@ def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False
     if len(event) <= 0:
         raise Exception("No recurrence pattern found for PM: {} {}.".format(pm_id, pm_name))
     elif len(event) > 1:
-        logging.warn("More than one recurrence patterns found for PM: {} {}. Using the first one.".format(pm_id, pm_name))
+        logging.warning("More than one recurrence patterns found for PM: {} {}. Using the first one.".format(pm_id, pm_name))
 
     event = event[0]
 
@@ -185,7 +185,14 @@ def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False
         print(description)
         print(str(rrule))
 
-    tasks = execute(SQL_GET_TASKS_GROUPED if grouped else SQL_GET_TASKS, connection, {'pm_id': pm_id })
+    tasks = execute(SQL_GET_TASKS_GROUPED if grouped else SQL_GET_TASKS,
+                    connection,
+                    {'pm_id': pm_id })
+
+    if len(tasks) == 1 and tasks[0]['TRIPLANNEDSTARTDT'] is None:
+        if verbosity >= 1:
+            logging.warning("PM schedule '{}' does not have any tasks.".format(pm_id))
+        tasks = [] # Allow a dummy sheet to be created
 
     total = 0
     ok_count = 0
@@ -213,13 +220,13 @@ def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False
 
     worksheet.set_row(2, 30)
 
+    i = 5 # Sometimes the iteration may not run
+
     rrule_itr = iter(rrule)
     for i, item in enumerate(tasks, start=5):
         expected_date = next(rrule_itr, datetime.fromtimestamp(0))
 
-        item['TRIPLANNEDSTARTDT'] =  localize_date(item['TRIPLANNEDSTARTDT'], local_tz)
-
-        actual_date = item['TRIPLANNEDSTARTDT']
+        actual_date = localize_date(item['TRIPLANNEDSTARTDT'], local_tz)
 
         coerced_date = restrict_to_working_calendar(expected_date, working_calendar)
         # The order of execution is important.
@@ -236,7 +243,8 @@ def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False
         if strip_time:
             # Strip off time
             expected_date = expected_date.date()
-            actual_date = actual_date.date()
+            if actual_date:
+                actual_date = actual_date.date()
 
         ok = expected_date == actual_date
 
