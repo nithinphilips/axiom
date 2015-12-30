@@ -96,8 +96,6 @@ compared.
 
 Known Issues
 ------------
-* Axiom does not support *Ad-hoc* schedules.
-* Axiom does not support skipping months in MONTHLY schedules.
 * The starting datetime is not the first recurrence instance, unless it does
   fit in the specified rules. They may cause the Axiom generated dates to
   deviate from TRIRIGA generated ones.
@@ -106,9 +104,12 @@ Known Issues
   <ftp://ftp.rfc-editor.org/in-notes/rfc2445.txt>`_ and `the implementation
   notes <https://labix.org/python-dateutil>`_ if you have questions about Axiom's
   behavior.
-* Working calendar rules are applied after a date is converted to local
-  time-zone.  In some scenarios this will cause the date to have the wrong
-  timezone offset.
+* Working calendar rules are applied after a date is generated from the
+  recurrence rules. This could cause dates to duplicate. For example, a DAILY
+  schedule will generate occurances for Sat and Sun. When the working calendar
+  rules are applied, the Sat and Sun dates will be changed to the following
+  Mon, resulting in 3 tasks for Monday. This is how TRIRIGA behaves with the
+  DEFAULT 8 to 5 calendar.
 
 Building Windows Installer
 --------------------------
