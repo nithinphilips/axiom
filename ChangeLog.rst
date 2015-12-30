@@ -2,6 +2,11 @@ Change Log
 ==========
 Axiom Change Log
 
+Version 0.2.1
+-------------
+* FIX: cx_Oracle.InterfaceError: Unable to acquire Oracle environment handle.
+  The oracle library is now embedded in the axiom.exe executable.
+
 Version 0.2.0
 -------------
 * Support for skipping months in MONTHLY schedules
