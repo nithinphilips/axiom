@@ -14,9 +14,10 @@ from datetime import datetime
 from tqdm import tqdm
 from xlsxwriter.utility import xl_rowcol_to_cell
 
-from .ora_helper import execute, parse_db_url
+
+from .ora_helper import execute, parse_db_url, set_verbosity
 from .pmeventparser import get_events, parse_event, restrict_to_working_calendar, localize_date, rrule_str
-from .queries import SQL_GET_PMSCHEDS, SQL_GET_PMSCHEDS_FILTERED, SQL_GET_TASKS
+from .queries import SQL_GET_PMSCHEDS, SQL_GET_PMSCHEDS_FILTERED, SQL_GET_TASKS, SQL_GET_TASKS_GROUPED
 
 xlFormats = dict()
 
@@ -56,6 +57,8 @@ def schedulevalidator(
 
     """
 
+    set_verbosity(verbosity)
+
     if site_url.endswith("/"):
         site_url = site_url[:-1]
 
@@ -63,14 +66,14 @@ def schedulevalidator(
     logging.debug("Using database connection: " + str(db))
     connection = db.get_connection()
 
-    pm_id_q = ["'{}'".format(i) for i in pm_id]
-
-    print(pm_id_q)
-
-    # Get ALL PM Schedules
     if pm_id:
-        pms = execute(SQL_GET_PMSCHEDS_FILTERED.format(','.join(pm_id_q)), connection)
+        # Get selected PM Schedules
+        pms_sql = SQL_GET_PMSCHEDS_FILTERED.format(', '.join(["'{}'".format(i) for i in pm_id]))
+        pms = execute(pms_sql, connection)
+        if len(pm_id) != len(pms):
+            logging.warning("Expected {} PMs, only got {}.".format(len(pm_id), len(pms)))
     else:
+        # Get ALL PM Schedules
         pms = execute(SQL_GET_PMSCHEDS, connection)
 
 
@@ -88,6 +91,8 @@ def schedulevalidator(
     # Validate each one
     for pm in tqdm(pms):
         try:
+            group = (pm['TRITASKGROUPINGRULELI'] == 'Create Task For Each Asset/Location')
+
             validate_pm(pm['TRIIDTX'],
                         pm['TRINAMETX'],
                         workbook,
@@ -95,6 +100,7 @@ def schedulevalidator(
                         timezone,
                         strip_time,
                         working_calendar,
+                        group,
                         verbosity)
         except Exception as e:
             logging.exception("Unable to validate a PM. Ignore and continue.")
@@ -111,9 +117,10 @@ def populate_index_worksheet(worksheet, pms, site_url):
     worksheet.set_column('A:A', 9)
     worksheet.set_column('B:B', 50)
     worksheet.set_column('C:C', 12)
-    worksheet.set_column('D:D', 13)
+    worksheet.set_column('D:D', 15)
     worksheet.set_column('E:E', 13)
     worksheet.set_column('F:F', 13)
+    worksheet.set_column('G:G', 13)
 
     for i, pm in enumerate(pms, start=1):
         url = site_url + "/pc/notify/link?recordId=" + str(pm["SPEC_ID"])
@@ -123,31 +130,32 @@ def populate_index_worksheet(worksheet, pms, site_url):
         worksheet.write(i, 0, pm["TRIIDTX"])
         worksheet.write(i, 1, pm["TRINAMETX"])
         worksheet.write(i, 2, pm["TRIPMTYPECLASSCL"])
-        worksheet.write(i, 3, '=COUNTIF({}[Valid?], "OK")'.format(table_name))
-        worksheet.write(i, 4, '=COUNTIF({}[Valid?], "ERROR")'.format(table_name))
-        formula = "={}+{}".format(xl_rowcol_to_cell(i, 3), xl_rowcol_to_cell(i, 4))
-        worksheet.write(i, 5, formula)
-        worksheet.write_url(i, 6,
+        worksheet.write(i, 3, "Yes" if pm["TRITASKGROUPINGRULELI"] == "Create Task For Each Asset/Location" else "No")
+        worksheet.write(i, 4, '=COUNTIF({}[Valid?], "OK")'.format(table_name))
+        worksheet.write(i, 5, '=COUNTIF({}[Valid?], "ERROR")'.format(table_name))
+        formula = "={}+{}".format(xl_rowcol_to_cell(i, 4), xl_rowcol_to_cell(i, 5))
+        worksheet.write(i, 6, formula)
+        worksheet.write_url(i, 7,
                             url="internal:{}!A1".format(pm["TRIIDTX"]),
                             string="Details",
                             tip="View details about " + pm["TRIIDTX"])
-        worksheet.write_url(i, 7,
+        worksheet.write_url(i, 8,
                             url=url,
                             string="View",
                             tip="View record " + pm["TRIIDTX"] + " in TRIRIGA")
 
-        cellA = xl_rowcol_to_cell(i, 3, row_abs=True, col_abs=True)
-        cellB = xl_rowcol_to_cell(i, 5, row_abs=True, col_abs=True)
-        worksheet.conditional_format(i, 3, i, 5, {'type': 'formula',
+        cellA = xl_rowcol_to_cell(i, 4, row_abs=True, col_abs=True)
+        cellB = xl_rowcol_to_cell(i, 6, row_abs=True, col_abs=True)
+        worksheet.conditional_format(i, 4, i, 6, {'type': 'formula',
                                                   'criteria': "={}={}".format(cellA, cellB),
                                                   'format': xlFormats['good']})
 
-
-    worksheet.add_table(0, 0, i, 7, { 'style': 'Table Style Light 11',
+    worksheet.add_table(0, 0, i, 8, { 'style': 'Table Style Light 11',
                                       'columns': [
                                           {'header': 'PM ID'},
                                           {'header': 'PM Schedule'},
                                           {'header': 'Recurrence'},
+                                          {'header': 'Task Grouping?'},
                                           {'header': 'Valid'},
                                           {'header': 'Invalid'},
                                           {'header': 'Total'},
@@ -157,7 +165,7 @@ def populate_index_worksheet(worksheet, pms, site_url):
 
     worksheet.activate()
 
-def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False, working_calendar="8to5", verbosity=1):
+def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False, working_calendar="8to5", grouped=False, verbosity=1):
 
     event = get_events(connection, pm_id=pm_id, timezone=timezone)
 
@@ -168,7 +176,7 @@ def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False
 
     event = event[0]
 
-    rrule, description = parse_event(event)
+    rrule, description = parse_event(event, verbosity=verbosity)
 
     if verbosity >= 1:
         print(pm_id + ": " + pm_name)
@@ -177,7 +185,7 @@ def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False
         print(description)
         print(str(rrule))
 
-    tasks = execute(SQL_GET_TASKS, connection, {'pm_id': pm_id })
+    tasks = execute(SQL_GET_TASKS_GROUPED if grouped else SQL_GET_TASKS, connection, {'pm_id': pm_id })
 
     total = 0
     ok_count = 0
@@ -187,14 +195,18 @@ def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False
     worksheet = workbook.add_worksheet(name=safe_xl_ws_name(pm_id))
 
     # Widen columns
-    worksheet.set_column(2, 2, 24)
-    worksheet.set_column(3, 3, 24)
+    worksheet.set_column('A:A', 12)
+    worksheet.set_column('B:B', 10)
+    worksheet.set_column('C:C', 24)
+    worksheet.set_column('D:D', 24)
+    worksheet.set_column('F:F', 12)
 
-    worksheet.merge_range(0, 0, 0, 3, "{}: {}".format(pm_id, pm_name), xlFormats['header'])
+    worksheet.write(0, 0, pm_id, xlFormats['header'])
+    worksheet.merge_range(0, 1, 0, 3, pm_name, xlFormats['header'])
     worksheet.merge_range(1, 0, 1, 3, description, xlFormats['rrule'])
     worksheet.merge_range(2, 0, 2, 3, rrule_str(rrule), xlFormats['rrule'])
 
-    worksheet.write_url(0, 5,
+    worksheet.write_url(0, 6,
                         url="internal:Index!A1",
                         string="Index",
                         tip="Return to Index page")
@@ -235,25 +247,30 @@ def validate_pm(pm_id, pm_name, workbook, connection, timezone, strip_time=False
         formula = '=IF({}={},"OK","ERROR")'.format(xl_rowcol_to_cell(i, 2),
                                                    xl_rowcol_to_cell(i, 3))
 
+        formula2 = '=IF(LEFT({},11)=LEFT({},11),"OK","ERROR")'.format(xl_rowcol_to_cell(i, 2),
+                                                                      xl_rowcol_to_cell(i, 3))
+
         worksheet.write(i, 0, item["TASK_ID"])
         worksheet.write(i, 1, item["TASK_STATUS"])
         worksheet.write(i, 2, str(actual_date))
         worksheet.write(i, 3, str(expected_date))
         worksheet.write(i, 4, formula)
+        worksheet.write(i, 5, formula2)
 
-    worksheet.conditional_format(5, 4, i, 4, {'type': 'text',
+    worksheet.conditional_format(5, 4, i, 5, {'type': 'text',
                                               'criteria': "containing",
                                               'value': "ERROR",
                                               'format': xlFormats['bad']})
 
-    worksheet.add_table(4, 0, i, 4, { 'style': 'Table Style Light 13',
+    worksheet.add_table(4, 0, i, 5, { 'style': 'Table Style Light 13',
                                       'name': 'Table' + pm_id,
                                       'columns': [
-                                          {'header': 'Task ID'},
+                                          {'header': 'Task Count' if grouped else "Task ID"},
                                           {'header': 'Status'},
                                           {'header': 'Planned Start Date'},
                                           {'header': 'Expected Date'},
                                           {'header': 'Valid?'},
+                                          {'header': 'Date Valid?'},
                                      ]})
 
     if verbosity >= 1:

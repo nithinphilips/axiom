@@ -4,6 +4,11 @@ import cx_Oracle
 import re
 import logging
 
+VERBOSE=0
+
+def set_verbosity(verbosity):
+    global VERBOSE
+    VERBOSE = verbosity
 
 def get_connection(tns_name, uname, upass):
     connection = cx_Oracle.connect(uname, upass, tns_name)
@@ -20,12 +25,15 @@ def execute(sql_statement, connection, parameters=None):
     """
 
     cursor = connection.cursor()
-    logging.debug("Execute SQL: " + sql_statement)
+    if VERBOSE >= 2:
+        logging.debug("Execute SQL: " + sql_statement)
+
     if parameters:
-        cursor = cursor.execute(sql_statement, parameters)
-        logging.debug("Parameters: " + str(parameters))
+        cursor.execute(sql_statement, parameters)
+        if VERBOSE >= 2:
+            logging.debug("Parameters: " + str(parameters))
     else:
-        cursor = cursor.execute(sql_statement)
+        cursor.execute(sql_statement)
 
     result = rows_to_dict_list(cursor)
     return result
@@ -71,7 +79,7 @@ def parse_db_url(url):
     Only one of sid or service_name will be filled. The other will be None.
     """
 
-    logging.debug("Parsing JDBC url: {}".format(url))
+    logging.debug("Parsing DB url: {}".format(url))
 
     if url is None:
         url = ""

@@ -192,11 +192,12 @@ def localize_date(naiveutcdate, timezone):
     localdate = timezone.normalize(utcdate.astimezone(timezone))
     return localdate
 
-def parse_event(event, default_count=5000):
+def parse_event(event, default_count=5000, verbosity=1):
     """
     """
 
-    logging.debug(pprint.pformat(event))
+    if verbosity >= 2:
+        logging.debug(pprint.pformat(event))
 
     freq=None
     dtstart=None
