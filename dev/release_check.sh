@@ -99,6 +99,28 @@ function check_versions {
     fi
 }
 
+function check_msi_guid {
+
+    V_FILES=Makefile
+
+    clear
+    echo
+    echo "MSI Installer GUID"
+
+    egrep -He '[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{8}' ${V_FILES} | sed 's/:/ : /g' | sed 's/=/ = /' | awk '{printf "    | %-24s %s\n", $1, $5}'
+
+    echo
+    echo -n "Have you updated the GUID for this release?   [y/N]: "
+    read RESPONSE
+
+    if [ "$RESPONSE" != "y" ]; then
+        echo "Here's a new GUID:"
+        echo ""
+        uuidgen
+        exit
+    fi
+}
+
 #############################################################
 #
 # Run release checks.
@@ -134,6 +156,7 @@ function check_git_status {
 check_test_status
 check_changefile
 check_versions
+check_msi_guid
 check_git_status
 
 
@@ -159,3 +182,8 @@ if [ "$RESPONSE" == "y" ]; then
 else
     exit 1
 fi
+
+VERSION=$(python3 dev/extractversion.py)
+
+echo ""
+echo "Version ${VERSION} is good to go."

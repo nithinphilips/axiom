@@ -8,7 +8,7 @@ VERSION := $(shell $(WINPYTHON) dev/extractversion.py)
 
 PRODUCT_NAME=axiom
 
-PRODUCT_GUID=8b9f33d7-fca6-4c7c-bb42-5f59ebca3efd
+PRODUCT_GUID=38e579b3-0e9a-4828-889f-70a3b70f3e61
 SOURCEDIR=$(PRODUCT_NAME)
 SOURCES := $(shell find $(SOURCEDIR) -iname '*.py')
 
