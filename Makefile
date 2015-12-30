@@ -4,7 +4,7 @@ WINPYTHON=C:/Python34/python.exe
 PYINSTALLER=C:/Python34/Scripts/pyinstaller.exe
 NOSETESTS=C:/Python34/Scripts/nosetests.exe
 
-VERSION := $(shell $(WINPYTHON) software/extractversion.py)
+VERSION := $(shell $(WINPYTHON) dev/extractversion.py)
 
 PRODUCT_NAME=axiom
 
