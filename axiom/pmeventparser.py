@@ -155,7 +155,7 @@ def restrict_to_working_calendar(expected_date, working_calendar="8to5"):
     elif working_calendar == "24/7":
         return expected_date
 
-def restrict_to_standard_calendar(expected_date, start_hour=8, end_hour=17):
+def restrict_to_standard_calendar(expected_date, start_hour=8, end_hour=17, verbose=False):
     """
     Restrict date to TRIRIGA Working Calendar.
 
@@ -172,13 +172,23 @@ def restrict_to_standard_calendar(expected_date, start_hour=8, end_hour=17):
         expected_date = expected_date + timedelta(hours=24)
         expected_date = expected_date.replace(hour=start_hour, minute=0)
 
+    if verbose:
+        print("{} < {} = {}".format(expected_date.hour, start_hour, expected_date.hour < start_hour))
+
     # Starts before 8 AM. Change start time to 8 AM
     if expected_date.hour < start_hour:
+        if verbose:
+            print("Starts before 8 AM. Change start time to 8 AM")
         expected_date = expected_date.replace(hour=start_hour, minute=0)
 
+    if verbose:
+        print("{} >= {} and {} > 0 = {}".format(expected_date.hour, end_hour, expected_date.minute, expected_date.hour >= end_hour and expected_date.minute > 0))
+
     # Starts after 5 PM. Change start time to 8 AM next day
-    if expected_date.hour >= end_hour and expected_date.minute > 0:
-        expected_date + timedelta(hours=24 - expected_date.hour) # Skip to next day
+    if expected_date.hour > end_hour or (expected_date.hour == end_hour and expected_date.minute > 0):
+        if verbose:
+            print("Starts after 5 PM. Change start time to 8 AM next day")
+        expected_date = expected_date + timedelta(hours=24 - expected_date.hour) # Skip to next day
         expected_date = expected_date.replace(hour=start_hour, minute=0) # Change start hour
 
     return expected_date
