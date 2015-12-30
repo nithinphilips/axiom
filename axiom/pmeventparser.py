@@ -139,7 +139,7 @@ def get_events(connection, pm_id=None, timezone="US/Eastern"):
         event["_EXCLUDES"] = excludes
 
     if not rows:
-        raise Exception("PM Schedule '{}' was not found.".format(pm_name))
+        raise Exception("No events for PM Schedule '{}' were found.".format(pm_id))
 
     return rows
 
