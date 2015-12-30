@@ -1,3 +1,4 @@
 [submodule "python_dateutil"]
 	path = software/python_dateutil
 	url = git@github.com:dateutil/dateutil.git
+	ignore = dirty
