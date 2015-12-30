@@ -165,13 +165,6 @@ def restrict_to_standard_calendar(expected_date, start_hour=8, end_hour=17, verb
     The seconds are unaltered to mimic TRIRIGA behavior.
     """
 
-    if expected_date.isoweekday() == 6: # Sat
-        expected_date = expected_date + timedelta(hours=48)
-        expected_date = expected_date.replace(hour=start_hour, minute=0)
-    elif expected_date.isoweekday() == 7: # Sun
-        expected_date = expected_date + timedelta(hours=24)
-        expected_date = expected_date.replace(hour=start_hour, minute=0)
-
     if verbose:
         print("{} < {} = {}".format(expected_date.hour, start_hour, expected_date.hour < start_hour))
 
@@ -190,6 +183,13 @@ def restrict_to_standard_calendar(expected_date, start_hour=8, end_hour=17, verb
             print("Starts after 5 PM. Change start time to 8 AM next day")
         expected_date = expected_date + timedelta(hours=24 - expected_date.hour) # Skip to next day
         expected_date = expected_date.replace(hour=start_hour, minute=0) # Change start hour
+
+    if expected_date.isoweekday() == 6: # Sat
+        expected_date = expected_date + timedelta(hours=48)
+        expected_date = expected_date.replace(hour=start_hour, minute=0)
+    elif expected_date.isoweekday() == 7: # Sun
+        expected_date = expected_date + timedelta(hours=24)
+        expected_date = expected_date.replace(hour=start_hour, minute=0)
 
     return expected_date
 
