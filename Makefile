@@ -21,14 +21,14 @@ dist: dist/$(PRODUCT_NAME)-$(VERSION).zip installer
 	cp windows/$(PRODUCT_NAME)-$(VERSION).msi dist/
 
 dist/$(PRODUCT_NAME).exe: $(PRODUCT_NAME)-runner.py $(SOURCES) ChangeLog.docx README.docx
-	$(PYINSTALLER) --noconfirm --onefile --name=$(PRODUCT_NAME) $<
+	$(PYINSTALLER) --noconfirm axiom.spec
 	-cp $(SOURCEDIR)/data/*.* dist/
 	cp ChangeLog.docx dist/
 	cp README.docx dist/
 	cp COPYING dist/
 
 dist/$(PRODUCT_NAME)-$(VERSION).zip: dist/$(PRODUCT_NAME).exe software/instantclient_11_2/
-	cd dist; 7z a -y $(PRODUCT_NAME)-$(VERSION).zip . ../software/instantclient_11_2/* -x!*.zip
+	cd dist; 7z a -y $(PRODUCT_NAME)-$(VERSION).zip . -x!*.zip
 
 install:
 	$(WINPYTHON) setup.py install
@@ -37,9 +37,13 @@ installer: dist/$(PRODUCT_NAME).exe
 	VERSION=$(VERSION) PRODUCT_GUID=$(PRODUCT_GUID) PRODUCT_NAME=$(PRODUCT_NAME) $(MAKE) -C windows
 
 clean:
-	rm -rf dist *.spec *.egg-info/ build/
+	rm -rf *.egg-info/ build/
 	rm -f README.docx ChangeLog.docx
 	VERSION=$(VERSION) $(MAKE) -C windows clean
+	find . | grep -E '(__pycache__|\.pyc|\.pyo)' | xargs rm -rf
+
+distclean:
+	rm -rf dist
 
 test:
 	$(NOSETESTS)
