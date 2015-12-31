@@ -109,9 +109,11 @@ Use the ``24/7`` calendar to avoid any working calendar restrictions.
 
 Known Issues
 ------------
-* The starting datetime is not the first recurrence instance, unless it does
-  fit in the specified rules. This may cause the Axiom generated dates to
-  deviate from TRIRIGA generated ones.
+* TRIRIGA may not generate a Work Task for the first recurrence in some cases
+  because the scheduling engine may not run until after the first the
+  recurrence has passed and it designed not to create Work Tasks in the past.
+  Axiom does not do this and so, the generated date series could be off by one
+  in some cases.
 * Axiom uses python-dateutil to generate dates. It implements the iCalendar
   specification. Read `the specification <https://www.ietf.org/rfc/rfc2445.txt>`_
   and `the implementation notes <https://labix.org/python-dateutil>`_ if you
