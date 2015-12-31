@@ -102,7 +102,7 @@ The ``8to5`` working calendar rules do not allow tasks to be scheduled on
 weekends. The Planned Start Dates that fall on Saturdays or Sundays will be
 changed to the following Monday at 8 AM. If you create a DAILY task, you may
 notice duplicates because of this. Run Axiom with ``--debug`` and ``-v 2``
-flags to see how the dates are changed by the working calendar rules. This 
+flags to see how the dates are changed by the working calendar rules. This
 mimics TRIRIGA's behavior.
 
 Use the ``24/7`` calendar to avoid any working calendar restrictions.
@@ -113,10 +113,9 @@ Known Issues
   fit in the specified rules. This may cause the Axiom generated dates to
   deviate from TRIRIGA generated ones.
 * Axiom uses python-dateutil to generate dates. It implements the iCalendar
-  specification. Read `the specification
-  <ftp://ftp.rfc-editor.org/in-notes/rfc2445.txt>`_ and `the implementation
-  notes <https://labix.org/python-dateutil>`_ if you have questions about Axiom's
-  behavior.
+  specification. Read `the specification <https://www.ietf.org/rfc/rfc2445.txt>`_
+  and `the implementation notes <https://labix.org/python-dateutil>`_ if you
+  have questions about Axiom's behavior.
 * Working calendar rules are applied after a date is generated from the
   recurrence rules. This could cause dates to duplicate. For example, a DAILY
   schedule will generate occurances for Sat and Sun. When the working calendar
