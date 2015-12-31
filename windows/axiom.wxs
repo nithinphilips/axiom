@@ -44,14 +44,15 @@
             <Custom Action="SetPerMachineFolder" After="SetPerUserFolder">ACTION="INSTALL" AND APPLICATIONFOLDER="" AND (ALLUSERS=1 OR (ALLUSERS=2 AND Privileged))</Custom>
         </InstallUISequence>
 
-
-
         <Directory Id='TARGETDIR' Name='SourceDir'>
             <Directory Id='ProgramFilesFolder' Name='PFiles'>
                 <Directory Id='APPLICATIONFOLDER' Name='Axiom'>
 
-                    <Component Id='MainExecutable' Guid='*'>
+                    <Component Id='MainExecutable' Guid='7101f15c-f105-4242-b99d-80045ef5da68'>
                         <File Id='axiom.exe' Name='axiom.exe' DiskId='1' Source='../dist/axiom.exe' KeyPath='yes' />
+                        <File Id='README.docx' Name='README.docx' DiskId='1' Source='../README.docx'/>
+                        <File Id='ChangeLog.docx' Name='ChangeLog.docx' DiskId='1' Source='../ChangeLog.docx'/>
+                        <File Id='COPYING' Name='COPYING' DiskId='1' Source='../COPYING' />
                     </Component>
 
                     <Component Id="UpdatePathUser"
