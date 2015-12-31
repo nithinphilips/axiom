@@ -58,3 +58,8 @@ target/
 
 README.docx
 ChangeLog.docx
+
+software/instantclient_11_2/
+software/cx_Oracle-5.2-11g.win-amd64-py3.4.exe
+software/python-3.4.0.amd64.msi
+software/pywin32-219.win-amd64-py3.4.exe
