@@ -1,37 +1,48 @@
 .PHONY: all dist install installer
 
-WINPYTHON=C:/Python34/python.exe
+# Axiom has to be built with Windows python
+PYTHON=C:/Python34/python.exe
 PYINSTALLER=C:/Python34/Scripts/pyinstaller.exe
 NOSETESTS=C:/Python34/Scripts/nosetests.exe
-
-VERSION := $(shell $(WINPYTHON) dev/extractversion.py)
+PANDOC=pandoc
+GIT=git
 
 PRODUCT_NAME=axiom
+VERSION := $(shell $(PYTHON) dev/extractversion.py)
 
-PRODUCT_GUID=38e579b3-0e9a-4828-889f-70a3b70f3e61
+# Random UUID for each build
+PRODUCT_GUID=$(shell uuidgen)
+
 SOURCEDIR=$(PRODUCT_NAME)
 SOURCES := $(shell find $(SOURCEDIR) -iname '*.py')
 
+# Distribution folder and distribution zip file name
+DISTROOT=./dist
+DISTDIR=$(PRODUCT_NAME)-$(VERSION)
+DISTZIP=$(PRODUCT_NAME)-$(VERSION).zip
+SRCDISTZIP=$(PRODUCT_NAME)-$(VERSION)-src.zip
+
 %.docx: %.rst
-	pandoc -t docx -o $@ $<
+	$(PANDOC) -t docx -o $@ $<
 
-all: dist/$(PRODUCT_NAME).exe
+all: ChangeLog.docx README.docx $(DISTROOT)/$(PRODUCT_NAME).exe
 
-dist: dist/$(PRODUCT_NAME)-$(VERSION).zip installer
-	cp windows/$(PRODUCT_NAME)-$(VERSION).msi dist/
-
-dist/$(PRODUCT_NAME).exe: $(PRODUCT_NAME)-runner.py $(SOURCES) ChangeLog.docx README.docx
+$(DISTROOT)/$(PRODUCT_NAME).exe: $(PRODUCT_NAME)-runner.py axiom.spec $(SOURCES)
 	$(PYINSTALLER) --noconfirm axiom.spec
 	-cp $(SOURCEDIR)/data/*.* dist/
-	cp ChangeLog.docx dist/
-	cp README.docx dist/
-	cp COPYING dist/
 
-dist/$(PRODUCT_NAME)-$(VERSION).zip: dist/$(PRODUCT_NAME).exe software/instantclient_11_2/
-	cd dist; 7z a -y $(PRODUCT_NAME)-$(VERSION).zip . -x!*.zip
+$(DISTROOT)/$(DISTZIP): dist/$(PRODUCT_NAME).exe
+	rm -rf $(DISTROOT)/$(DISTDIR)
+	mkdir -p $(DISTROOT)/$(DISTDIR)
+	cp dist/$(PRODUCT_NAME).exe $(DISTROOT)/$(DISTDIR)
+	-cp $(SOURCEDIR)/data/*.* dist/
+	cp *.docx $(DISTROOT)/$(DISTDIR)
+	cp COPYING $(DISTROOT)/$(DISTDIR)
+	cd $(DISTROOT) && zip -r $(DISTZIP) $(PRODUCT_NAME)-$(VERSION)/
+	rm -rf $(DISTROOT)/$(DISTDIR)
 
 install:
-	$(WINPYTHON) setup.py install
+	$(PYTHON) setup.py install
 
 installer: dist/$(PRODUCT_NAME).exe
 	VERSION=$(VERSION) PRODUCT_GUID=$(PRODUCT_GUID) PRODUCT_NAME=$(PRODUCT_NAME) $(MAKE) -C windows
@@ -42,9 +53,18 @@ clean:
 	VERSION=$(VERSION) $(MAKE) -C windows clean
 	find . | grep -E '(__pycache__|\.pyc|\.pyo)' | xargs rm -rf
 
+dist: all distzip installer distsrc
+	cp windows/$(PRODUCT_NAME)-$(VERSION).msi dist/
+
 distclean:
 	rm -rf dist
 
+distzip: $(DISTROOT)/$(DISTZIP)
+
+distsrc:
+	mkdir -p $(DISTROOT)
+	rm -f $(DISTROOT)/$(SRCDISTZIP)
+	$(GIT) archive --format zip --output $(DISTROOT)/$(SRCDISTZIP) HEAD
+
 test:
 	$(NOSETESTS)
-

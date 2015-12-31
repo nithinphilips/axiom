@@ -156,7 +156,7 @@ function check_git_status {
 check_test_status
 check_changefile
 check_versions
-check_msi_guid
+#check_msi_guid
 check_git_status
 
 
