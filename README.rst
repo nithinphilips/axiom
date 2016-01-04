@@ -120,7 +120,7 @@ Known Issues
   have questions about Axiom's behavior.
 * Working calendar rules are applied after a date is generated from the
   recurrence rules. This could cause dates to duplicate. For example, a DAILY
-  schedule will generate occurances for Sat and Sun. When the working calendar
+  schedule will generate recurrences for Sat and Sun. When the working calendar
   rules are applied, the Sat and Sun dates will be changed to the following
   Mon, resulting in 3 tasks for Monday. This is how TRIRIGA behaves with the
   DEFAULT 8 to 5 calendar.
