@@ -78,7 +78,7 @@ def eventparser(
         verbosity=None
     ):
     """
-    Reads a PM Schedule recurrence rule from TRIRIGA database.
+    Reads and interprets a PM Schedule recurrence rule from TRIRIGA database.
     """
 
     db = parse_db_url(db_url)

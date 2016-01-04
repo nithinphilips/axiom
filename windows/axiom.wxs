@@ -23,7 +23,7 @@
                             Property="PREVIOUSFOUND" />
         </Upgrade>
 
-        <Media Id='1' Cabinet='Sample.cab' EmbedCab='yes' DiskPrompt="CD-ROM #1" />
+        <Media Id='1' Cabinet='Sample.cab' EmbedCab='yes' CompressionLevel='high' DiskPrompt="CD-ROM #1" />
         <Property Id='DiskPrompt' Value="Acme's Foobar 1.0 Installation [1]" />
 
         <Property Id="DISABLEADVTSHORTCUTS" Value="1" />
@@ -50,6 +50,7 @@
 
                     <Component Id='MainExecutable' Guid='7101f15c-f105-4242-b99d-80045ef5da68'>
                         <File Id='axiom.exe' Name='axiom.exe' DiskId='1' Source='../dist/axiom.exe' KeyPath='yes' />
+                        <File Id='axiom_parser.exe' Name='axiom-parser.exe' DiskId='1' Source='../dist/axiom-parser.exe' />
                         <File Id='README.docx' Name='README.docx' DiskId='1' Source='../README.docx'/>
                         <File Id='ChangeLog.docx' Name='ChangeLog.docx' DiskId='1' Source='../ChangeLog.docx'/>
                         <File Id='COPYING' Name='COPYING' DiskId='1' Source='../COPYING' />

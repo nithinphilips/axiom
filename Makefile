@@ -25,16 +25,20 @@ SRCDISTZIP=$(PRODUCT_NAME)-$(VERSION)-src.zip
 %.docx: %.rst
 	$(PANDOC) -t docx -o $@ $<
 
-all: ChangeLog.docx README.docx $(DISTROOT)/$(PRODUCT_NAME).exe
+all: ChangeLog.docx README.docx $(DISTROOT)/$(PRODUCT_NAME).exe $(DISTROOT)/$(PRODUCT_NAME)-parser.exe
+
+$(DISTROOT)/$(PRODUCT_NAME)-parser.exe: $(PRODUCT_NAME)-parser-runner.py axiom-parser.spec $(SOURCES)
+	$(PYINSTALLER) --noconfirm axiom-parser.spec
 
 $(DISTROOT)/$(PRODUCT_NAME).exe: $(PRODUCT_NAME)-runner.py axiom.spec $(SOURCES)
 	$(PYINSTALLER) --noconfirm axiom.spec
 	-cp $(SOURCEDIR)/data/*.* dist/
 
-$(DISTROOT)/$(DISTZIP): dist/$(PRODUCT_NAME).exe
+$(DISTROOT)/$(DISTZIP): $(DISTROOT)/$(PRODUCT_NAME).exe $(DISTROOT)/$(PRODUCT_NAME)-parser.exe
 	rm -rf $(DISTROOT)/$(DISTDIR)
 	mkdir -p $(DISTROOT)/$(DISTDIR)
 	cp dist/$(PRODUCT_NAME).exe $(DISTROOT)/$(DISTDIR)
+	cp dist/$(PRODUCT_NAME)-parser.exe $(DISTROOT)/$(DISTDIR)
 	-cp $(SOURCEDIR)/data/*.* dist/
 	cp *.docx $(DISTROOT)/$(DISTDIR)
 	cp COPYING $(DISTROOT)/$(DISTDIR)
@@ -44,7 +48,7 @@ $(DISTROOT)/$(DISTZIP): dist/$(PRODUCT_NAME).exe
 install:
 	$(PYTHON) setup.py install
 
-installer: dist/$(PRODUCT_NAME).exe
+installer: $(DISTROOT)/$(PRODUCT_NAME).exe $(DISTROOT)/$(PRODUCT_NAME)-parser.exe
 	VERSION=$(VERSION) PRODUCT_GUID=$(PRODUCT_GUID) PRODUCT_NAME=$(PRODUCT_NAME) $(MAKE) -C windows
 
 clean:
